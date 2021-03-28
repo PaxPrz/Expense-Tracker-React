@@ -1,7 +1,10 @@
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { useState, useEffect } from 'react';
-import firebase from 'firebase/app';
-import { DateTimePickerComponent } from '@syncfusion/ej2-react-calendars';
+
+import PropTypes from 'prop-types';
+import ExpenseTab from './ExpenseTab';
+import { AuthContext } from 'firebase-react-hooks';
+import ExpenseDoneForm from './ExpenseDoneForm';
 
 var uuid = require("uuid");
 
@@ -12,84 +15,50 @@ export default function ExpenseDone(props) {
     const firestore = props.myFirestore;
 
     const expense_done_collection = firestore.collection('expenses_done');
-    
-    const [ reason, setReason ] = useState('');
-    const [ amount, setAmount ] = useState(0);
-    const [ timestamp, setTimestamp ] = useState(new Date());
+
     const [ expenseList, setExpenseList ] = useState([]);
 
-    useEffect(() => {
+    const fetchData = () => {
         expense_done_collection
         .orderBy('timestamp')
         .where('user_id', '==', user.uid)
         .get()
         .then(expense_list => {
-            setExpenseList(expense_list.docs.map(doc => doc.data()));
+            setExpenseList(expense_list.docs.map(doc => ({id: doc.id, ...(doc.data())})));
         })
         .catch(err => {
             alert(err.message);
         });
+    }
+
+    useEffect(() => {
+        fetchData();
     }, []);
 
-    const changeReason = ({ target }) => {
-        setReason(target.value);
-    }
-
-    const changeAmount = ({ target }) => {
-        setAmount(target.value);
-    }
-
-    const changeTimestamp = ({ target }) => {
-        setTimestamp(target.value);
-    }
-
-    const validateFormData = () => {
-        let errors = {};
-        let formIsValid = true;
-
-        if (!reason) {
-            formIsValid = false;
-            errors["reason"] = "Cannot be empty";
-        }
-
-        if (amount < 0){
-            formIsValid = false;
-            errors["amount"] = "Cannot be negative";
-        }
-
-        return {
-            formIsValid: formIsValid,
-            errors: errors
-        }
-    }
-
-    const clearForm = () => {
-        setReason('');
-        setAmount(0);
-    }
-
-    const formSubmit = (e) => {
-        e.preventDefault();
-        const { formIsValid, errors } = validateFormData();
-        if (!formIsValid) {
-            for (const key in errors) {
-                alert(`${key}: ${errors[key]}`);
-            }
-            return;
-        }
+    
+    const deleteThis = ({ target }) => {
         expense_done_collection
-        .doc(uuid.v4())
-        .set({
-            user_id: user.uid,
-            reason: reason,
-            amount: amount,
-            timestamp: timestamp,
-            added_on: firebase.firestore.FieldValue.serverTimestamp(),
+        .doc(target.value)
+        .delete()
+        .then(() => {
+            alert("Delete successful!!");
+            fetchData();
+        })
+        .catch(err => {
+            alert("Cannot delete: "+ err.message);
+        });
+    }
+
+    const editThis = ({ target }) => {
+        expense_done_collection
+        .doc(target.value)
+        .update({
+
         }).then(() => {
-            alert("Writing successful!");
-            clearForm();
+            alert("Update Successful!");
+            fetchData();
         }).catch(err => {
-            alert("Error: "+ err.message);
+            alert("Cannot Edit: "+ err.message);
         });
     }
 
@@ -101,17 +70,30 @@ export default function ExpenseDone(props) {
     return (
         <div>
             <p>Expense Done Here</p>
-            {
-                expenseList.map(
-                    (exp, i) => <li key={i}>{(new Date(exp.timestamp.seconds * 1000)).toLocaleString()}: {exp.reason}: {exp.amount}</li>
-                )
-            }
-            <form onSubmit={formSubmit}>
-                <input type="text" value={reason} onChange={changeReason} />
-                <input type="number" value={amount} onChange={changeAmount} />
-                <DateTimePickerComponent placeholder="Expense Done on:" value={timestamp} onChange={changeTimestamp} max={new Date()}></DateTimePickerComponent>
-                <button type="submit">Add</button>
-            </form>
+            <table style={{marginLeft: 'auto', marginRight: 'auto'}}>
+                <thead>
+                    <tr>
+                        <td>Timestamp</td>
+                        <td>Reason</td>
+                        <td>Amount</td>
+                        <td></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        expenseList.map(
+                            (exp) => <ExpenseTab expense={exp} onDelete={deleteThis} onEdit={editThis} />
+                        )
+                    }
+                </tbody>
+            </table>
+            <ExpenseDoneForm user={user} expense_done_collection={expense_done_collection} fetchData={fetchData} />
         </div>
     )
 }
+
+
+// ExpenseDone.propTypes = {
+//     authUser: PropTypes.element.isRequired,
+//     myFirestore: PropTypes.element.isRequired,
+// }
