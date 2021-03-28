@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import ExpenseTab from './ExpenseTab';
 import { AuthContext } from 'firebase-react-hooks';
 import ExpenseDoneForm from './ExpenseDoneForm';
+import CurrentTime from './CurrentTime';
 
 var uuid = require("uuid");
 
@@ -17,6 +18,7 @@ export default function ExpenseDone(props) {
     const expense_done_collection = firestore.collection('expenses_done');
 
     const [ expenseList, setExpenseList ] = useState([]);
+    const [ total, setTotal ] = useState(0);
 
     const fetchData = () => {
         expense_done_collection
@@ -24,7 +26,9 @@ export default function ExpenseDone(props) {
         .where('user_id', '==', user.uid)
         .get()
         .then(expense_list => {
-            setExpenseList(expense_list.docs.map(doc => ({id: doc.id, ...(doc.data())})));
+            let exp_list = expense_list.docs.map(doc => ({id: doc.id, ...(doc.data())}));
+            setTotal(exp_list.reduce((t, b) => t + parseInt(b.amount), 0));
+            setExpenseList(exp_list);
         })
         .catch(err => {
             alert(err.message);
@@ -35,7 +39,6 @@ export default function ExpenseDone(props) {
         fetchData();
     }, []);
 
-    
     const deleteThis = ({ target }) => {
         expense_done_collection
         .doc(target.value)
@@ -62,11 +65,6 @@ export default function ExpenseDone(props) {
         });
     }
 
-    // const query = expense_done_collection.orderBy('timestamp');//.where('user_id', '==', user.uid);
-    // console.log(query);
-    // const [messages] = useCollectionData(query, {idField: 'id'});
-    // console.log(messages);
-
     return (
         <div>
             <p>Expense Done Here</p>
@@ -85,6 +83,17 @@ export default function ExpenseDone(props) {
                             (exp) => <ExpenseTab expense={exp} onDelete={deleteThis} onEdit={editThis} />
                         )
                     }
+                    <tr>
+                        <td>
+                            <CurrentTime />
+                        </td>
+                        <td>
+                            TOTAL
+                        </td>
+                        <td>
+                            {total}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
             <ExpenseDoneForm user={user} expense_done_collection={expense_done_collection} fetchData={fetchData} />
