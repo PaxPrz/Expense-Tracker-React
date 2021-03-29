@@ -52,19 +52,6 @@ export default function ExpenseDone(props) {
         });
     }
 
-    const editThis = ({ target }) => {
-        expense_done_collection
-        .doc(target.value)
-        .update({
-
-        }).then(() => {
-            alert("Update Successful!");
-            fetchData();
-        }).catch(err => {
-            alert("Cannot Edit: "+ err.message);
-        });
-    }
-
     return (
         <div>
             <p>Expense Done Here</p>
@@ -80,7 +67,7 @@ export default function ExpenseDone(props) {
                 <tbody>
                     {
                         expenseList.map(
-                            (exp) => <ExpenseTab expense={exp} onDelete={deleteThis} onEdit={editThis} />
+                            (exp) => <ExpenseTab expense={exp} expense_done_collection={expense_done_collection} fetchData={fetchData} />
                         )
                     }
                     <tr>
